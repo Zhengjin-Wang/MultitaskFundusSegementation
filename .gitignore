@@ -2,3 +2,4 @@ save/
 nohup.out
 portion.txt
 *.pyc
+.idea/
