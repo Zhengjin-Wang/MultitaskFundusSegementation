@@ -28,6 +28,54 @@ BatchNorm2d = functools.partial(nn.BatchNorm2d)
 BN_MOMENTUM = 0.01
 logger = logging.getLogger(__name__)
 
+#研究怎么构建hrnet的分类头
+
+class ClassifyHead(nn.Module):
+    def __init__(self, backbone_channels, num_outputs):
+        super(ClassifyHead, self).__init__()
+        last_inp_channels = sum(backbone_channels)
+        self.last_layer = nn.Sequential(
+            nn.Conv2d(
+                in_channels=last_inp_channels,
+                out_channels=last_inp_channels,
+                kernel_size=1,
+                stride=1,
+                padding=0),
+            nn.BatchNorm2d(last_inp_channels, momentum=0.1),
+            nn.ReLU(inplace=False),
+            # nn.Conv2d(
+            #     in_channels=last_inp_channels,
+            #     out_channels=num_outputs,
+            #     kernel_size=1,
+            #     stride=1,
+            #     padding=0),
+            nn.Conv2d(last_inp_channels, 256, 3, padding=1, bias=False),  # 输入是 256 * 768 * 768
+            nn.MaxPool2d(4),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(256, 256, 3, padding=1, bias=False),
+            nn.MaxPool2d(4),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(256, 256, 3, padding=1, bias=False),
+            nn.MaxPool2d(4),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(256, 256, 3, padding=1, bias=False),
+            nn.MaxPool2d(3),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(256, 256, 2, padding=1, bias=False),
+            nn.MaxPool2d(2),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),  # 最终 256 * 2 * 2
+            nn.Flatten(),
+            nn.Linear(1024, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 256),
+            nn.ReLU(),
+            nn.Linear(512, num_outputs)
+        )
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""

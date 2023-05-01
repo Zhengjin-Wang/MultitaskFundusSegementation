@@ -4,6 +4,99 @@ import numpy as np
 import torch
 from utils.utils import get_output, mkdir_if_missing
 
+def get_classify_acc(loader, model, classify_task_name):
+    model.eval()
+    tot = 0
+    acc = 0
+    with torch.no_grad():
+        for i, batch in enumerate(loader):
+
+            images = batch['image'].cuda(non_blocking=True)
+            targets = batch[classify_task_name].cuda(non_blocking=True)
+            output = model(images)
+
+            pred = output[classify_task_name]
+            label = targets[classify_task_name]
+            tot += pred.shape[0]
+            acc += (pred.argmax(1) == label).sum()
+
+    print(classify_task_name + " acc(test dataset does not have accurate labels): " + str(acc/tot))
+
+
+from segment_anything import SamPredictor, sam_model_registry
+sam = sam_model_registry["default"](checkpoint="/root/data1/wzj/sam_vit_h_4b8939.pth")
+predictor = SamPredictor(sam)
+
+def get_mIOU_SAM(loader, model, task_list, n_classes=2):
+
+    # Iterate
+    all_tp = {task: [0] * n_classes for task in task_list}
+    all_fp = {task: [0] * n_classes for task in task_list}
+    all_fn = {task: [0] * n_classes for task in task_list}
+    rsl = 0
+
+    model.eval()
+    with torch.no_grad():
+        for i, batch in enumerate(loader):
+
+            images = batch['image'].cuda(non_blocking=True)
+            targets = {task: batch[task].cuda(non_blocking=True) for task in task_list}
+            output = model(images)
+
+            for task in task_list:
+
+                if task == 'biff' or task == 'cross' or task == 'endpoint' or task == 'icmd_classify':
+                    continue
+
+                label = targets[task]
+                pred = output[task]
+
+                batch_size = pred.shape[0]
+                valid_idx = []
+                for i in range(batch_size):
+                    if label[i, 0, 0] != -1:
+                        valid_idx.append(i)
+                if len(valid_idx) == 0:
+                    continue
+                pred = pred[valid_idx, :, :, :]
+                label = label[valid_idx, :, :]
+                sam_images = images[valid_idx, :, :, :]
+
+                # argmax处理
+                gt = np.array(label.squeeze().cpu().long())
+                mask = np.argmax(np.array(pred.cpu()), axis=1)
+
+                tp = all_tp[task]
+                fp = all_fp[task]
+                fn = all_fn[task]
+
+                # TP, FP, and FN evaluation
+                for i_part in range(0, n_classes):
+                    tmp_gt = (gt == i_part) # 当前类别ground truth对的
+                    tmp_pred = (mask == i_part) # 当前类别预测对的
+                    tp[i_part] += np.sum(tmp_gt & tmp_pred)
+                    fp[i_part] += np.sum(~tmp_gt & tmp_pred)
+                    fn[i_part] += np.sum(tmp_gt & ~tmp_pred)
+    print()
+    for task in task_list:
+        tp = all_tp[task]
+        fp = all_fp[task]
+        fn = all_fn[task]
+        jac = [0] * n_classes
+        for i_part in range(0, n_classes):
+            jac[i_part] = float(tp[i_part]) / max(float(tp[i_part] + fp[i_part] + fn[i_part]), 1e-8)
+
+        # print("{} mIoU: ".format(task) + str(np.mean(jac)))
+        # print("IoU of {}: ".format('background') + str(jac[0]))
+        print("IoU of {}: ".format(task) + str(jac[1]))
+        print("Dice of {}: ".format(task) + str(2 * jac[1] / (1 + jac[1])))
+        print('----------------------------------------\n')
+
+        rsl += jac[1]
+
+    return rsl / len(task_list)
+
+
 def get_mIOU(loader, model, task_list, n_classes=2):
 
     # Iterate
@@ -22,7 +115,7 @@ def get_mIOU(loader, model, task_list, n_classes=2):
 
             for task in task_list:
 
-                if task == 'biff' or task == 'cross' or task == 'endpoint':
+                if task == 'biff' or task == 'cross' or task == 'endpoint' or task == 'icmd_classify':
                     continue
 
                 label = targets[task]

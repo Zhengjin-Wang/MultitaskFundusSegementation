@@ -42,7 +42,15 @@ class MULTIDATASET(Dataset):
         sample['image_name'] = img_name
 
         for task in self.task_list:
-            m1t = torch.empty([768,768])
+            if task == 'icmd_classify':
+                if img_name[0] == 'N':
+                    sample[task] = torch.tensor(0).long()
+                elif img_name[0] == 'H':
+                    sample[task] = torch.tensor(1).long()
+                elif img_name[0] == 'P':
+                    sample[task] = torch.tensor(2).long()
+                continue
+            m1t = torch.empty([768, 768])
             m1t[0, 0] = -1
             if img_name in self.label_sets[task]:
                 m1 = Image.open(os.path.join(self.label_folders[task], self.images[i]))

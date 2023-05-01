@@ -6,16 +6,37 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# class ClassifyHead(nn.Sequential):
-#     def __init__(self, in_channels, num_classes):
-#         super(DeepLabHead, self).__init__(
-#             ASPP(in_channels, [12, 24, 36]),
-#             nn.Conv2d(256, 256, 3, padding=1, bias=False),
-#             nn.BatchNorm2d(256),
-#             nn.ReLU(),
-#             nn.Conv2d(256, 64, ),
-#
-#         )
+class ClassifyHead(nn.Sequential):
+    def __init__(self, in_channels, num_classes):
+        super(DeepLabHead, self).__init__(
+            ASPP(in_channels, [12, 24, 36]),
+            nn.Conv2d(256, 256, 3, padding=1, bias=False), # 输入是 256 * 768 * 768
+            nn.MaxPool2d(4),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(256, 256, 3, padding=1, bias=False),
+            nn.MaxPool2d(4),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(256, 256, 3, padding=1, bias=False),
+            nn.MaxPool2d(4),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(256, 256, 3, padding=1, bias=False),
+            nn.MaxPool2d(3),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(256, 256, 2, padding=1, bias=False),
+            nn.MaxPool2d(2),
+            nn.BatchNorm2d(256),
+            nn.ReLU(), # 最终 256 * 2 * 2
+            nn.Flatten(),
+            nn.Linear(1024, 1024),
+            nn.ReLU(),
+            nn.linear(1024, 256),
+            nn.ReLU(),
+            nn.Linear(512, num_classes)
+        )
 
 class DeepLabHead(nn.Sequential):
     def __init__(self, in_channels, num_classes):

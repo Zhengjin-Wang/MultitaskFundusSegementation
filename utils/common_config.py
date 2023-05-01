@@ -27,6 +27,9 @@ def get_head(backbone_channels, task, cfg):
         if task == 'biff' or task == 'cross' or task == 'endpoint':
             from models.seg_hrnet import SoftmaxHighResolutionHead
             return SoftmaxHighResolutionHead(backbone_channels, 2)
+        elif task == 'icmd_classify':
+            from models.seg_hrnet import ClassifyHead
+            return ClassifyHead(backbone_channels, 3)
         else:
             from models.seg_hrnet import HighResolutionHead
             return HighResolutionHead(backbone_channels, 2)
@@ -55,6 +58,9 @@ def get_loss(init_bg_weight, task, RESUME):
     if task == 'biff' or task == 'cross' or task == 'endpoint':
         from losses.loss_functions import MyMSELoss
         criterion = MyMSELoss(init_bg_weight)
+    elif task == 'icmd_classify':
+        from losses.loss_functions import MyClassifyLoss
+        criterion = MyClassifyLoss()
     else:
         from losses.loss_functions import MyBinaryCrossEntropyLoss
         criterion = MyBinaryCrossEntropyLoss(init_bg_weight, RESUME)

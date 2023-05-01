@@ -8,7 +8,7 @@ from utils.logger import Logger
 from utils.utils import mkdir_if_missing
 from utils.common_config import get_model, get_criterion, get_optimizer
 from dataset.dataset import MULTIDATASET
-from evaluation.evaluate_utils import get_mIOU
+from evaluation.evaluate_utils import get_mIOU, get_classify_acc
 from losses.gradnorm import gradnorm
 
 # task_list = ['ma', 'he', 'ex', 'od']
@@ -117,6 +117,7 @@ for epoch in range(1, EPOCH + 1):
         print('Current loss_weight ' + str(model.module.loss_weights) + ' match with ' + str(task_list))
 
     mIOU = get_mIOU(test_loader, model, eval_task_list, 2)
+    get_classify_acc(test_loader, model, 'icmd_classify')
     print("mIOU is " + str(mIOU) + "\n")
     if(mIOU > best_mIOU):
         print("best mIOU changed: {}->{}".format(str(best_mIOU), str(mIOU)))

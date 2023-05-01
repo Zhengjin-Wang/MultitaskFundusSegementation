@@ -4,6 +4,14 @@ import torch.nn.functional as F
 from torch.nn.modules.module import Module
 import numpy as np
 
+class MyClassifyLoss(Module):
+    def __init__(self):
+        self.loss_fn = nn.CrossEntropyLoss()
+
+    def forward(self, output, label):
+        return self.loss_fn(output, label)
+
+
 class MyMSELoss(Module):
     """
     Binary Cross Entropy with ignore regions, not balanced.
